@@ -2,7 +2,7 @@
 
 
 def build_model(model_config: dict):
-    """Return a segmentation model with a `.backbone` or `.encoder` and 5-class head."""
+    """Return a segmentation model with 5 input channels, backbone/encoder, and 5-class head."""
     raise NotImplementedError
 
 

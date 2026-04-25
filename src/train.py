@@ -23,7 +23,7 @@ def build_loss(loss_config: dict, device: torch.device) -> nn.Module:
 
     Two options:
         - "cross_entropy": standard cross-entropy loss for multi-class segmentation
-        - "weighted_cross_entropy": cross-entropy loss with class weights to handle class imbalance
+        - "weight_cross_entropy": cross-entropy loss with class weights to handle class imbalance
 
     Expected logits: [batch_size, num_classes, height, width]
     Expected targets: [batch_size, height, width] with class indices in [0, num_classes-1]
@@ -33,7 +33,7 @@ def build_loss(loss_config: dict, device: torch.device) -> nn.Module:
     if loss_name == "cross_entropy":
         return nn.CrossEntropyLoss()
 
-    if loss_name == "weighted_cross_entropy":
+    if loss_name == "weight_cross_entropy":
         class_weights = torch.tensor(loss_config["class_weights"], dtype=torch.float32, device=device)
         return nn.CrossEntropyLoss(weight=class_weights)
 
