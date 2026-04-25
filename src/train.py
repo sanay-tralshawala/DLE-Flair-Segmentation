@@ -22,7 +22,7 @@ from src.utils import load_config, get_device
 
 
 
-def build_loss(loss_config: dict) -> nn.Module:
+def build_loss(NotImplemented) -> nn.Module:
     '''
     Build the segmentation loss function.
     
@@ -32,5 +32,37 @@ def build_loss(loss_config: dict) -> nn.Module:
 
     Expected logits: [batch_size, num_classes, height, width]
         Expected targets: [batch_size, height, width] with class indices in [0, num_classes-1]
+    '''
+
+
+def build_optimizer(NotImplemented) -> optim.Optimizer:
+    '''
+    Build the optimizer for training.
+    
+    Two options:
+        - "adam": Adam optimizer with default parameters
+        - "adamw": AdamW optimizer with default parameters
+    '''
+
+
+def train_one_epoch(NotImplemented) -> dict:
+    '''
+    Train the model for one epoch and return the average training loss.
+    '''
+
+@torch.no_grad()
+def validate_one_epoch(NotImplemented) -> dict:
+    '''
+    Validate the model for one epoch and return the average validation loss and metrics.
+    '''
+
+def save_checkpoint(NotImplemented) -> None:
+    '''
+    Save the model checkpoint to local disk. 
+    '''
+
+def train_from_config(config_path: Path) -> None:
+    '''
+    Main training loop that trains a FLAIR segmentation model based on the provided configuration file.
     '''
 
