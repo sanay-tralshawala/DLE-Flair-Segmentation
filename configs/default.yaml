@@ -1,0 +1,87 @@
+# configs/default.yaml
+# Shared default configuration for all FLAIR segmentation experiments.
+# Model-specific YAMLs override only the fields that differ.
+
+experiment:
+  name: default_experiment
+  seed: 42
+  output_dir: outputs
+  device: auto  # auto, cuda, cpu, mps
+
+data:
+  train_csv: data/processed/splits/train.csv
+  val_csv: data/processed/splits/val.csv
+  test_csv: data/processed/splits/test.csv
+  class_map: data/processed/class_map.json
+  train_stats: data/processed/train_stats.json
+
+  image_size: 512
+  crop_size: 384
+  batch_size: 4
+  num_workers: 4
+
+  input_channels: rgb
+  ignore_index: 255 # set mask to ignore bad masks (if they exist, standard behavior)
+  num_classes: 19
+
+  augment:
+    enabled: true
+    horizontal_flip: true
+    vertical_flip: true
+    random_rotate_90: true
+
+model:
+  name: null
+  encoder: null
+  pretrained: true
+  num_classes: 5
+
+training:
+  max_epochs: 100
+  min_epochs: 10
+
+  warmup_frozen_epochs: 3
+
+  early_stopping:
+    enabled: true
+    monitor: val_miou
+    mode: max
+    patience: 10
+    min_delta: 0.001
+
+  optimizer:
+    name: adamw
+    backbone_lr: 0.00001
+    head_lr: 0.0001
+    weight_decay: 0.0001
+
+  scheduler:
+    enabled: false
+    name: cosine
+    warmup_epochs: 0
+
+  loss:
+    name: standard_cross_entropy
+    class_weights: auto  # auto, null, or path to saved weights json/pt
+
+  amp: true
+  grad_clip_norm: 1.0
+
+checkpoint:
+  monitor: val_miou
+  mode: max
+  save_last: true
+  save_best: true
+
+wandb:
+  enabled: true
+  project: flair-segmentation
+  entity: null
+  group: flair-toy
+  job_type: train
+  tags:
+    - flair
+    - segmentation
+  log_model: false
+  log_predictions: true
+  log_every_n_epochs: 1

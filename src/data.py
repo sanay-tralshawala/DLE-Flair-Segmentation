@@ -1,1 +1,1 @@
-# dataset class, dataloader, any data augmentation
+# dataset class, dataloader, data augmentation
