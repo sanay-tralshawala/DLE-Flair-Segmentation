@@ -10,7 +10,7 @@ model:
   name: resnet34_unet
   encoder: resnet34
   pretrained: true
-  num_classes: 13
+  num_classes: 5
 
 training:
   max_epochs: 80
