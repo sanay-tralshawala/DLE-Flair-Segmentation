@@ -1,10 +1,24 @@
-# DLE-Flair-Segmentation
+# DLE FLAIR Segmentation
 
-Temporary documentations for DLE final project: FLAIR based segmentation model comparison/analysis.
+Prototype pipeline for 5-class land-cover segmentation on the FLAIR-1 toy dataset.
 
-Current repo contains light repo organization and file scaffolding for data loading/training code. The dataset is not committed. To download the toy FLAIR dataset, navigate to `data/README.md` and run the notebook referenced.
-```
+## Current Status
 
-Then use `notebooks/01_eda.ipynb` for the first pass at class counts and distribution checks.
+- EDA notebook creates grouped 5-class train/val/test split CSVs.
+- `data/processed/class_map.json` maps original FLAIR labels `1..19` to targets `0..4`.
+- `src/data.py` uses FLAIR-style `rasterio` reads for all five source channels.
+- `build_dataloaders()` tested on one local batch, plan to use dataloader.ipynb at first
+- `src/train.py` is a lightweight torch training loop with checkpoints and (optional) W&B logging.
+    - TODO: add checkpints to W&B artifact uploads
 
+## Setup Notes
 
+- `requirements.txt` and `pyproject.toml` available for both pip and uv envs
+- W&B is disabled by default. Before enabling it, authorize locally with `wandb login`.
+- The raw FLAIR toy dataset is not committed; use the download notebook/data instructions before running training.
+
+## Next Steps
+
+- Implement model builders for `in_channels=5`.
+- Implement validation metrics in `src/evaluate.py`, starting with `val_loss` and IoU.
+- Turn on W&B after the local train/validation path is verified.
