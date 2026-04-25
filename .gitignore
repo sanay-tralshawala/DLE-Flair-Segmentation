@@ -221,7 +221,8 @@ __marimo__/
 .codex
 
 # data files
-data/*
+data/processed/splits/*
+data/raw/*
 !data/README.md
 
 # outputs (should mostly be in WandB)
