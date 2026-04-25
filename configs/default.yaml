@@ -15,11 +15,10 @@ data:
   train_stats: data/processed/train_stats.json
 
   image_size: 512
-  crop_size: 384
   batch_size: 4
   num_workers: 4
 
-  input_channels: rgb
+  input_channels: grayscale
   ignore_index: 255 # set mask to ignore bad masks (if they exist, standard behavior)
   num_classes: 5
 
@@ -69,7 +68,7 @@ checkpoint:
 
 wandb:
   enabled: false
-  project: flair-segmentation
+  project: DLE-Flair-Segmentation
   entity: null
   group: flair-toy
   job_type: train
