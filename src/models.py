@@ -99,13 +99,23 @@ def build_model(model_config: dict):
 
     return model
 
+
 def freeze_backbone(model) -> None:
     """Disable gradients for the model backbone during head warmup."""
-    for p in model.backbone.parameters():
-        p.requires_grad = False
-
+    if hasattr(model, 'encoder'):
+        for p in model.encoder.parameters():
+            p.requires_grad = False
+    elif hasattr(model, 'backbone'):
+        for p in model.backbone.parameters():
+            p.requires_grad = False
+    else:
+        print("Warning: Model has neither 'encoder' nor 'backbone' attribute to freeze.")
 
 def unfreeze_backbone(model) -> None:
     """Enable gradients for the model backbone after head warmup."""
-    for p in model.backbone.parameters():
-        p.requires_grad = True
+    if hasattr(model, 'encoder'):
+        for p in model.encoder.parameters():
+            p.requires_grad = True
+    elif hasattr(model, 'backbone'):
+        for p in model.backbone.parameters():
+            p.requires_grad = True

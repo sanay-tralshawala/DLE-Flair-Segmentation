@@ -10,3 +10,4 @@ torchvision
 tqdm
 wandb
 rasterio
+segmentation_models_pytorch
