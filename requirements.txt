@@ -2,6 +2,7 @@ ipykernel
 matplotlib
 numpy
 pillow
+python-dotenv
 pyyaml
 timm
 torch
