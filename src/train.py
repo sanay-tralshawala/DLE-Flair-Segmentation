@@ -4,6 +4,7 @@ Shared training loop for FLAIR segmentation models.
 Primary entry point: `train_from_config(<model_config_path>)`
 """
 
+import os
 from pathlib import Path
 
 import torch
@@ -217,12 +218,38 @@ def _current_lrs(optimizer: optim.Optimizer) -> dict:
     }
 
 
+def _load_env_file() -> None:
+    """
+    Load local environment variables for notebook/script runs.
+    """
+    try:
+        from dotenv import find_dotenv, load_dotenv
+
+        env_path = find_dotenv(usecwd=True)
+        if env_path:
+            load_dotenv(env_path, override=False)
+        return
+    except ModuleNotFoundError:
+        # if dotenv is not installed, notify but dont fail, might use colab secrets
+        print("python-dotenv not found, skipping .env loading. OK if using Colab secrets for W&B API key.")
+
+
 def _init_wandb(config: dict):
     wandb_config = config.get("wandb", {})
     if not wandb_config.get("enabled", False):
         return None
 
     import wandb
+
+    _load_env_file()
+    api_key = os.environ.get("WANDB_API_KEY")
+    if not api_key:
+        raise RuntimeError(
+            "W&B is enabled, but WANDB_API_KEY is not set. "
+            "For local runs, add WANDB_API_KEY to repo-root .env. "
+            "For Colab runs, add a Colab secret named WANDB_API_KEY before training."
+        )
+    wandb.login(key=api_key)
 
     return wandb.init(
         project=wandb_config["project"],
@@ -235,11 +262,12 @@ def _init_wandb(config: dict):
     )
 
 
-def _log_wandb_model(run, model_path: Path) -> None:
+def _log_wandb_checkpoints(run, checkpoint_paths: list[Path], artifact_name: str) -> None:
     import wandb
 
-    artifact = wandb.Artifact(model_path.stem, type="model")
-    artifact.add_file(str(model_path))
+    artifact = wandb.Artifact(artifact_name, type="model")
+    for checkpoint_path in checkpoint_paths:
+        artifact.add_file(str(checkpoint_path), name=checkpoint_path.name)
     run.log_artifact(artifact)
 
 
@@ -367,10 +395,18 @@ def train_from_config(config_path: str | Path) -> dict:
                 print(f"Early stopping at epoch {epoch}. Best epoch: {best_epoch}.")
                 break
 
-        if run is not None and config.get("wandb", {}).get("log_model", False):
-            best_path = output_dir / "best.pt"
-            if best_path.exists():
-                _log_wandb_model(run, best_path)
+        if run is not None and config.get("wandb", {}).get("log_model", True):
+            checkpoint_paths = [
+                path
+                for path in (output_dir / "best.pt", output_dir / "last.pt")
+                if path.exists()
+            ]
+            if checkpoint_paths:
+                _log_wandb_checkpoints(
+                    run,
+                    checkpoint_paths,
+                    artifact_name=f"{config['experiment']['name']}-checkpoints",
+                )
     finally:
         if run is not None:
             run.finish()

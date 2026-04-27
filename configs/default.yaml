@@ -80,4 +80,4 @@ wandb:
   tags:
     - flair
     - segmentation
-  log_model: false
+  log_model: true
