@@ -100,7 +100,14 @@ def _add_mask_legend(axis, mask: np.ndarray, class_names=None, palette=None, ign
             name = _class_name(class_names, label)
         handles.append(Patch(facecolor=color, edgecolor="none", label=name))
     if handles:
-        axis.legend(handles=handles, loc="lower center", bbox_to_anchor=(0.5, -0.2), ncol=min(4, len(handles)))
+        axis.legend(
+            handles=handles,
+            loc="center left",
+            bbox_to_anchor=(1.02, 0.5),
+            ncol=1,
+            borderaxespad=0.0,
+            fontsize="small",
+        )
 
 
 def colorize_label_mask(mask, class_names=None, palette=None, ignore_index: int = 255) -> np.ndarray:
@@ -279,3 +286,48 @@ def plot_logits_overlay_grid(
         palette=palette,
         ignore_index=ignore_index,
     )
+
+
+def plot_prediction_comparison_grid(
+    images,
+    masks,
+    logits,
+    max_items: int = 4,
+    alpha: float = 0.45,
+    channels: tuple[int, int, int] = (0, 1, 2),
+    class_names=None,
+    palette=None,
+    ignore_index: int = 255,
+):
+    """Plot ground-truth and prediction overlays for the same image batch."""
+    images = _image_batch(images)
+    masks = _mask_batch(masks)
+    predictions = _mask_batch(logits_to_label_mask(logits))
+    count = min(max_items, len(images), len(masks), len(predictions))
+    if count < 1:
+        raise ValueError("No image/mask/logit triples available to plot.")
+
+    fig, axes = plt.subplots(count, 2, figsize=(10, 5 * count), squeeze=False)
+    for index in range(count):
+        columns = (
+            ("Ground truth", masks[index]),
+            ("Prediction", predictions[index]),
+        )
+        for column_index, (title, mask) in enumerate(columns):
+            axis = axes[index][column_index]
+            axis.imshow(
+                overlay_mask(
+                    images[index],
+                    mask,
+                    alpha=alpha,
+                    channels=channels,
+                    palette=palette,
+                    ignore_index=ignore_index,
+                )
+            )
+            axis.set_title(f"{title} {index}")
+            axis.axis("off")
+            _add_mask_legend(axis, mask, class_names=class_names, palette=palette, ignore_index=ignore_index)
+
+    fig.tight_layout()
+    return fig
