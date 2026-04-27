@@ -326,7 +326,6 @@ def train_from_config(config_path: str | Path) -> dict:
                 config["training"]["scheduler"],
                 config["training"]["max_epochs"] - epoch + 1,
             )
-<<<<<<< Updated upstream
 
         train_metrics = train_one_epoch(
             model=model,
@@ -336,7 +335,14 @@ def train_from_config(config_path: str | Path) -> dict:
             device=device,
             epoch=epoch,
         )
-        val_metrics = validate_one_epoch(model, val_loader, loss_fn, device)
+        val_metrics = validate_one_epoch(
+                model, 
+                val_loader, 
+                loss_fn, 
+                config["data"]["num_classes"], 
+                config["data"].get("ignore_index", 255), 
+                device
+                )
 
         if scheduler is not None:
             scheduler.step()
@@ -367,73 +373,9 @@ def train_from_config(config_path: str | Path) -> dict:
                 epoch,
                 config,
                 metrics,
-                best_metric,
-=======
+                best_metric,)
             
-            val_metrics = validate_one_epoch(
-                model, 
-                val_loader, 
-                loss_fn, 
-                config["data"]["num_classes"], 
-                config["data"].get("ignore_index", 255), 
-                device
-                )
-
-            if scheduler is not None:
-                scheduler.step()
-
-            metrics = {
-                "epoch": epoch,
-                **train_metrics,
-                **val_metrics,
-                **_current_lrs(optimizer),
-            }
-            history.append(metrics)
-
-            current_metric = metrics[monitor]
-            improved = is_better(current_metric, best_metric, mode, min_delta)
-            if improved:
-                best_metric = current_metric
-                best_epoch = epoch
-                epochs_without_improvement = 0
-            else:
-                epochs_without_improvement += 1
-
-            if checkpoint_config.get("save_last", True):
-                save_checkpoint(
-                    output_dir / "last.pt",
-                    model,
-                    optimizer,
-                    scheduler,
-                    epoch,
-                    config,
-                    metrics,
-                    best_metric,
-                )
-
-            if improved and checkpoint_config.get("save_best", True):
-                save_checkpoint(
-                    output_dir / "best.pt",
-                    model,
-                    optimizer,
-                    scheduler,
-                    epoch,
-                    config,
-                    metrics,
-                    best_metric,
-                )
-
-            if run is not None:
-                run.log(metrics, step=epoch)
-
-            print(
-                f"epoch {epoch:03d} "
-                f"train_loss={metrics['train_loss']:.4f} "
-                f"val_loss={metrics['val_loss']:.4f} "
-                f"val_IoU={val_metrics['val_IoU']:.4f}"
-                f"{monitor}={current_metric:.4f}"
->>>>>>> Stashed changes
-            )
+        
 
         if improved and checkpoint_config.get("save_best", True):
             save_checkpoint(
@@ -447,15 +389,16 @@ def train_from_config(config_path: str | Path) -> dict:
                 best_metric,
             )
 
-        if run is not None:
-            run.log(metrics, step=epoch)
+            if run is not None:
+                run.log(metrics, step=epoch)
 
-        print(
-            f"epoch {epoch:03d} "
-            f"train_loss={metrics['train_loss']:.4f} "
-            f"val_loss={metrics['val_loss']:.4f} "
-            f"{monitor}={current_metric:.4f}"
-        )
+            print(
+                f"epoch {epoch:03d} "
+                f"train_loss={metrics['train_loss']:.4f} "
+                f"val_loss={metrics['val_loss']:.4f} "
+                f"val_IoU={val_metrics['val_IoU']:.4f} "
+                f"{monitor}={current_metric:.4f}")
+
 
         can_stop = epoch >= config["training"]["min_epochs"]
         should_stop = (
