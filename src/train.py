@@ -271,6 +271,12 @@ def _log_wandb_checkpoints(run, checkpoint_paths: list[Path], artifact_name: str
     run.log_artifact(artifact)
 
 
+def finish_wandb_run(run) -> None:
+    """Finish a W&B run when notebook-side logging is complete."""
+    if run is not None:
+        run.finish()
+
+
 def train_from_config(config_path: str | Path) -> dict:
     """
     Main training loop that trains a FLAIR segmentation model from a merged config.
@@ -310,110 +316,107 @@ def train_from_config(config_path: str | Path) -> dict:
     history = []
     run = _init_wandb(config)
 
-    try:
-        for epoch in range(1, config["training"]["max_epochs"] + 1):
-            if epoch == warmup_frozen_epochs + 1 and warmup_frozen_epochs > 0:
-                unfreeze_backbone(model)
-                optimizer = build_optimizer(model, config["training"]["optimizer"])
-                scheduler = build_scheduler(
-                    optimizer,
-                    config["training"]["scheduler"],
-                    config["training"]["max_epochs"] - epoch + 1,
-                )
-
-            train_metrics = train_one_epoch(
-                model=model,
-                train_loader=train_loader,
-                loss_fn=loss_fn,
-                optimizer=optimizer,
-                device=device,
-                epoch=epoch,
-            )
-            val_metrics = validate_one_epoch(model, val_loader, loss_fn, device)
-
-            if scheduler is not None:
-                scheduler.step()
-
-            metrics = {
-                "epoch": epoch,
-                **train_metrics,
-                **val_metrics,
-                **_current_lrs(optimizer),
-            }
-            history.append(metrics)
-
-            current_metric = metrics[monitor]
-            improved = is_better(current_metric, best_metric, mode, min_delta)
-            if improved:
-                best_metric = current_metric
-                best_epoch = epoch
-                epochs_without_improvement = 0
-            else:
-                epochs_without_improvement += 1
-
-            if checkpoint_config.get("save_last", True):
-                save_checkpoint(
-                    output_dir / "last.pt",
-                    model,
-                    optimizer,
-                    scheduler,
-                    epoch,
-                    config,
-                    metrics,
-                    best_metric,
-                )
-
-            if improved and checkpoint_config.get("save_best", True):
-                save_checkpoint(
-                    output_dir / "best.pt",
-                    model,
-                    optimizer,
-                    scheduler,
-                    epoch,
-                    config,
-                    metrics,
-                    best_metric,
-                )
-
-            if run is not None:
-                run.log(metrics, step=epoch)
-
-            print(
-                f"epoch {epoch:03d} "
-                f"train_loss={metrics['train_loss']:.4f} "
-                f"val_loss={metrics['val_loss']:.4f} "
-                f"{monitor}={current_metric:.4f}"
+    for epoch in range(1, config["training"]["max_epochs"] + 1):
+        if epoch == warmup_frozen_epochs + 1 and warmup_frozen_epochs > 0:
+            unfreeze_backbone(model)
+            optimizer = build_optimizer(model, config["training"]["optimizer"])
+            scheduler = build_scheduler(
+                optimizer,
+                config["training"]["scheduler"],
+                config["training"]["max_epochs"] - epoch + 1,
             )
 
-            can_stop = epoch >= config["training"]["min_epochs"]
-            should_stop = (
-                early_stopping_config.get("enabled", True)
-                and can_stop
-                and epochs_without_improvement >= early_stopping_config["patience"]
-            )
-            if should_stop:
-                print(f"Early stopping at epoch {epoch}. Best epoch: {best_epoch}.")
-                break
+        train_metrics = train_one_epoch(
+            model=model,
+            train_loader=train_loader,
+            loss_fn=loss_fn,
+            optimizer=optimizer,
+            device=device,
+            epoch=epoch,
+        )
+        val_metrics = validate_one_epoch(model, val_loader, loss_fn, device)
 
-        if run is not None and config.get("wandb", {}).get("log_model", True):
-            checkpoint_paths = [
-                path
-                for path in (output_dir / "best.pt", output_dir / "last.pt")
-                if path.exists()
-            ]
-            if checkpoint_paths:
-                _log_wandb_checkpoints(
-                    run,
-                    checkpoint_paths,
-                    artifact_name=f"{config['experiment']['name']}-checkpoints",
-                )
-    finally:
+        if scheduler is not None:
+            scheduler.step()
+
+        metrics = {
+            "epoch": epoch,
+            **train_metrics,
+            **val_metrics,
+            **_current_lrs(optimizer),
+        }
+        history.append(metrics)
+
+        current_metric = metrics[monitor]
+        improved = is_better(current_metric, best_metric, mode, min_delta)
+        if improved:
+            best_metric = current_metric
+            best_epoch = epoch
+            epochs_without_improvement = 0
+        else:
+            epochs_without_improvement += 1
+
+        if checkpoint_config.get("save_last", True):
+            save_checkpoint(
+                output_dir / "last.pt",
+                model,
+                optimizer,
+                scheduler,
+                epoch,
+                config,
+                metrics,
+                best_metric,
+            )
+
+        if improved and checkpoint_config.get("save_best", True):
+            save_checkpoint(
+                output_dir / "best.pt",
+                model,
+                optimizer,
+                scheduler,
+                epoch,
+                config,
+                metrics,
+                best_metric,
+            )
+
         if run is not None:
-            run.finish()
+            run.log(metrics, step=epoch)
+
+        print(
+            f"epoch {epoch:03d} "
+            f"train_loss={metrics['train_loss']:.4f} "
+            f"val_loss={metrics['val_loss']:.4f} "
+            f"{monitor}={current_metric:.4f}"
+        )
+
+        can_stop = epoch >= config["training"]["min_epochs"]
+        should_stop = (
+            early_stopping_config.get("enabled", True)
+            and can_stop
+            and epochs_without_improvement >= early_stopping_config["patience"]
+        )
+        if should_stop:
+            print(f"Early stopping at epoch {epoch}. Best epoch: {best_epoch}.")
+            break
+
+    if run is not None and config.get("wandb", {}).get("log_model", True):
+        checkpoint_paths = [
+            path
+            for path in (output_dir / "best.pt", output_dir / "last.pt")
+            if path.exists()
+        ]
+        if checkpoint_paths:
+            _log_wandb_checkpoints(
+                run,
+                checkpoint_paths,
+                artifact_name=f"{config['experiment']['name']}-checkpoints",
+            )
 
     return {
         "output_dir": output_dir,
         "best_epoch": best_epoch,
         "best_metric": best_metric,
         "history": history,
+        "run": run,
     }
