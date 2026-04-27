@@ -29,13 +29,14 @@ def build_loss(loss_config: dict, device: torch.device) -> nn.Module:
     Expected targets: [batch_size, height, width] with class indices in [0, num_classes-1]
     """
     loss_name = loss_config["name"]
+    ignore_index = loss_config.get("ignore_index", 255)
 
     if loss_name == "cross_entropy":
-        return nn.CrossEntropyLoss()
+        return nn.CrossEntropyLoss(ignore_index=ignore_index)
 
     if loss_name == "weight_cross_entropy":
         class_weights = torch.tensor(loss_config["class_weights"], dtype=torch.float32, device=device)
-        return nn.CrossEntropyLoss(weight=class_weights)
+        return nn.CrossEntropyLoss(weight=class_weights, ignore_index=ignore_index)
 
     raise ValueError(f"Unknown loss: {loss_name}")
 
@@ -158,6 +159,9 @@ def train_one_epoch(
         num_batches += 1
         progress.set_postfix(loss=loss.item())
 
+    if num_batches == 0:
+        raise ValueError("Training dataloader is empty.")
+
     return {"train_loss": running_loss / num_batches}
 
 
@@ -252,6 +256,7 @@ def train_from_config(config_path: str | Path) -> dict:
 
     train_loader, val_loader, _ = build_dataloaders(config["data"])
     model = build_model(config["model"]).to(device)
+    config["training"]["loss"].setdefault("ignore_index", config["data"].get("ignore_index", 255))
     loss_fn = build_loss(config["training"]["loss"], device)
 
     warmup_frozen_epochs = config["training"].get("warmup_frozen_epochs", 0)
