@@ -109,6 +109,15 @@ def build_scheduler(
     scheduler_name = scheduler_config["name"]
     if scheduler_name == "cosine":
         return optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=max_epochs)
+    if scheduler_name == "reduce_on_plateau":
+        return optim.lr_scheduler.ReduceLROnPlateau(
+            optimizer,
+            mode=scheduler_config.get("mode", "min"),
+            factor=scheduler_config.get("factor", 0.1),
+            patience=scheduler_config.get("patience", 10),
+            threshold=scheduler_config.get("threshold", 0.0001),
+            min_lr=scheduler_config.get("min_lr", 0.0),
+        )
 
     raise ValueError(f"Unknown scheduler: {scheduler_name}")
 
@@ -352,9 +361,6 @@ def train_from_config(config_path: str | Path) -> dict:
             device=device,
         )
 
-        if scheduler is not None:
-            scheduler.step()
-
         metrics = {
             "epoch": epoch,
             **train_metrics,
@@ -364,6 +370,12 @@ def train_from_config(config_path: str | Path) -> dict:
         history.append(metrics)
 
         current_metric = metrics[monitor]
+        if scheduler is not None:
+            if isinstance(scheduler, optim.lr_scheduler.ReduceLROnPlateau):
+                scheduler.step(current_metric)
+            else:
+                scheduler.step()
+
         improved = is_better(current_metric, best_metric, mode, min_delta)
         if improved:
             best_metric = current_metric
