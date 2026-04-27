@@ -11,3 +11,4 @@ tqdm
 wandb
 rasterio
 segmentation_models_pytorch
+transformers
