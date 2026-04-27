@@ -171,14 +171,22 @@ def validate_one_epoch(
     model: nn.Module,
     val_loader,
     loss_fn: nn.Module,
-    num_classes, ignore_index,
+    num_classes: int,
+    ignore_index: int,
     device: torch.device,
 ) -> dict:
     """
     Validate for one epoch. Metrics beyond val_loss come from evaluate.py modules.
     """
     model.eval()
-    return evaluate_model(model=model, dataloader=val_loader, loss_fn=loss_fn, device=device, num_classes=num_classes, ignore_index=ignore_index)
+    return evaluate_model(
+        model=model,
+        dataloader=val_loader,
+        loss_fn=loss_fn,
+        device=device,
+        num_classes=num_classes,
+        ignore_index=ignore_index,
+    )
 
 
 def save_checkpoint(
@@ -336,13 +344,13 @@ def train_from_config(config_path: str | Path) -> dict:
             epoch=epoch,
         )
         val_metrics = validate_one_epoch(
-                model, 
-                val_loader, 
-                loss_fn, 
-                config["data"]["num_classes"], 
-                config["data"].get("ignore_index", 255), 
-                device
-                )
+            model=model,
+            val_loader=val_loader,
+            loss_fn=loss_fn,
+            num_classes=config["data"]["num_classes"],
+            ignore_index=config["data"].get("ignore_index", 255),
+            device=device,
+        )
 
         if scheduler is not None:
             scheduler.step()
@@ -373,9 +381,8 @@ def train_from_config(config_path: str | Path) -> dict:
                 epoch,
                 config,
                 metrics,
-                best_metric,)
-            
-        
+                best_metric,
+            )
 
         if improved and checkpoint_config.get("save_best", True):
             save_checkpoint(
@@ -389,16 +396,16 @@ def train_from_config(config_path: str | Path) -> dict:
                 best_metric,
             )
 
-            if run is not None:
-                run.log(metrics, step=epoch)
+        if run is not None:
+            run.log(metrics, step=epoch)
 
-            print(
-                f"epoch {epoch:03d} "
-                f"train_loss={metrics['train_loss']:.4f} "
-                f"val_loss={metrics['val_loss']:.4f} "
-                f"val_IoU={val_metrics['val_IoU']:.4f} "
-                f"{monitor}={current_metric:.4f}")
-
+        print(
+            f"epoch {epoch:03d} "
+            f"train_loss={metrics['train_loss']:.4f} "
+            f"val_loss={metrics['val_loss']:.4f} "
+            f"val_IoU={val_metrics.get('val_IoU', float('nan')):.4f} "
+            f"{monitor}={current_metric:.4f}"
+        )
 
         can_stop = epoch >= config["training"]["min_epochs"]
         should_stop = (

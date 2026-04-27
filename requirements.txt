@@ -1,5 +1,7 @@
 ipykernel
+ipywidgets
 matplotlib
+nbformat
 numpy
 pillow
 python-dotenv

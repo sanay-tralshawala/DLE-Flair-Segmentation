@@ -26,6 +26,9 @@ training:
     weight_decay: 0.0001
 
 wandb:
+  enabled: true
+  log_model: true
+  include_images: true
   tags:
     - flair
     - segmentation

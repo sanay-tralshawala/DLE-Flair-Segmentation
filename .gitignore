@@ -228,6 +228,8 @@ data/raw/*
 
 # outputs (should mostly be in WandB)
 outputs/*
+notebooks/outputs/*
+notebooks/wandb/*
 
 # Flair source code reference
 0_reference/
