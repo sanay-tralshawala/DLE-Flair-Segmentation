@@ -64,6 +64,7 @@ db.sqlite3-journal
 # Flask stuff:
 instance/
 .webassets-cache
+.codex-notes/
 
 # Scrapy stuff:
 .scrapy
@@ -227,3 +228,7 @@ data/raw/*
 
 # outputs (should mostly be in WandB)
 outputs/*
+
+# Flair source code reference
+0_reference/
+
