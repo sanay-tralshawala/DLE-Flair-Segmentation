@@ -16,7 +16,7 @@ data:
 
   image_size: 512
   batch_size: 4
-  num_workers: 4
+  num_workers: 0
 
   # FLAIR base code reads 1-indexed raster bands; use all five source channels.
   channels: [1, 2, 3, 4, 5]
