@@ -328,6 +328,7 @@ def train_from_config(config_path: str | Path) -> dict:
     """
     Main training loop that trains a FLAIR segmentation model from a merged config.
     """
+    _load_env_file()
     config = load_config(config_path)
     config = sync_class_config(config)
     _set_seed(config["experiment"]["seed"])

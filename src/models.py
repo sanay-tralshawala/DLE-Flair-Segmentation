@@ -1,4 +1,6 @@
 """Model construction and backbone freezing helpers."""
+import os
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -47,10 +49,31 @@ class SegmentationModel(nn.Module):
         return x
 
 class DinoV3SegmentationModel(nn.Module):
-    def __init__(self, model_name="facebook/dinov3-convnext-tiny-pretrain-lvd1689m", num_classes=5):
+    def __init__(self, model_name="facebook/dinov3-convnext-tiny-pretrain-lvd1689m", in_channels=5, num_classes=5):
         super().__init__()
 
-        self.backbone = AutoModel.from_pretrained(model_name)
+        self.backbone = AutoModel.from_pretrained(model_name, token=os.environ.get("HF_HUB_TOKEN"))
+
+        stem_conv = self.backbone.model.stages[0].downsample_layers[0]
+        if in_channels != stem_conv.in_channels:
+            new_stem_conv = nn.Conv2d(
+                in_channels,
+                stem_conv.out_channels,
+                kernel_size=stem_conv.kernel_size,
+                stride=stem_conv.stride,
+                padding=stem_conv.padding,
+                bias=stem_conv.bias is not None,
+            )
+            with torch.no_grad():
+                copied_channels = min(in_channels, stem_conv.in_channels)
+                new_stem_conv.weight[:, :copied_channels].copy_(stem_conv.weight[:, :copied_channels])
+                if in_channels > stem_conv.in_channels:
+                    repeated = stem_conv.weight.mean(dim=1, keepdim=True)
+                    for channel_index in range(stem_conv.in_channels, in_channels):
+                        new_stem_conv.weight[:, channel_index:channel_index + 1].copy_(repeated)
+                if stem_conv.bias is not None:
+                    new_stem_conv.bias.copy_(stem_conv.bias)
+            self.backbone.model.stages[0].downsample_layers[0] = new_stem_conv
 
         # hidden size depends on model (tiny ≈ 768)
         hidden_dim = self.backbone.config.hidden_sizes[-1]
@@ -64,15 +87,9 @@ class DinoV3SegmentationModel(nn.Module):
     def forward(self, x):
         input_size = x.shape[-2:]
 
-        outputs = self.backbone(x)
-
-        # HF convnext returns feature maps already
-        if hasattr(outputs, "last_hidden_state"):
-            x = outputs.last_hidden_state
-        elif hasattr(outputs, "hidden_states"):
-            x = outputs.hidden_states[-1]
-        else:
-            raise ValueError("Unexpected DINO output format")
+        # Use the spatial encoder output directly; self.backbone(x) adds pooled tokens.
+        outputs = self.backbone.model(x)
+        x = outputs.last_hidden_state
 
         x = self.decoder(x)
         x = F.interpolate(x, size=input_size, mode="bilinear", align_corners=False)
@@ -104,7 +121,7 @@ def build_model(model_config: dict):
             num_classes=num_classes,
         )
     elif model_config["name"] == "dinov3_convnext_tiny":
-        model = DinoV3SegmentationModel(num_classes=num_classes)
+        model = DinoV3SegmentationModel(in_channels=in_channels, num_classes=num_classes)
     else:
         raise ValueError(f"Unsupported model name: {model_config['name']}")
 
