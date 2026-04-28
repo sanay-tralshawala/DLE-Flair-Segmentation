@@ -20,7 +20,7 @@ model:
 
 checkpoint:
   monitor: val_loss
-  mode: max # options: min, max
+  mode: min # options: min, max
   save_last: true
   save_best: true
 
@@ -32,7 +32,7 @@ training:
   early_stopping:
     enabled: true
     monitor: val_loss
-    mode: max # options: min, max
+    mode: min # options: min, max
     patience: 20
     min_delta: 0.0001
 
