@@ -25,7 +25,7 @@ training:
     enabled: true
     monitor: val_loss
     mode: min # options: min, max
-    patience: 20
+    patience: 35
     min_delta: 0.0001
 
   optimizer:
