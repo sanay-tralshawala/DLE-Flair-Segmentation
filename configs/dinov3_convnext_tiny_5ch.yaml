@@ -1,18 +1,18 @@
-# configs/dinov3_convnext_tiny_3ch.yaml
+# configs/dinov3_convnext_tiny_5ch.yaml
 
 defaults:
   - default.yaml
 
 experiment:
-  name: dinov3_convnext_tiny_3ch_val_IoU
+  name: dinov3_convnext_tiny_5ch_val_IoU
 
 data:
-  channels: [1, 2, 3]
+  channels: [1, 2, 3, 4, 5]
 
 model:
   name: dinov3_convnext_tiny
   encoder: dinov3_convnext_tiny
-  in_channels: 3
+  in_channels: 5
 
 training:
   warmup_frozen_epochs: 10

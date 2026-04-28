@@ -1,18 +1,18 @@
-# configs/resnet34_unet_3ch.yaml
+# configs/resnet34_unet_5ch.yaml
 
 defaults:
   - default.yaml
 
 experiment:
-  name: resnet34_unet_3ch_val_IoU
+  name: resnet34_unet_5ch_val_IoU
 
 data:
-  channels: [1, 2, 3]
+  channels: [1, 2, 3, 4, 5]
 
 model:
   name: resnet34_unet
   encoder: resnet34
-  in_channels: 3
+  in_channels: 5
 
 wandb:
   enabled: true

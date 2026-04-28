@@ -1,18 +1,18 @@
-# configs/convnext_tiny_3ch.yaml
+# configs/convnext_tiny_5ch.yaml
 
 defaults:
   - default.yaml
 
 experiment:
-  name: convnext_tiny_3ch_val_IoU
+  name: convnext_tiny_5ch_val_IoU
 
 data:
-  channels: [1, 2, 3]
+  channels: [1, 2, 3, 4, 5]
 
 model:
   name: convnext_tiny
   encoder: convnext_tiny
-  in_channels: 3
+  in_channels: 5
 
 wandb:
   enabled: true
@@ -22,3 +22,4 @@ wandb:
     - segmentation
     - convnext
     - tiny
+
