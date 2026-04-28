@@ -11,7 +11,7 @@ from pathlib import Path
 import torch
 import torch.nn as nn
 import torch.optim as optim
-from tqdm.auto import tqdm
+from tqdm import tqdm
 
 from src.data import build_dataloaders
 from src.models import build_model, freeze_backbone, unfreeze_backbone
