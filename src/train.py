@@ -5,6 +5,7 @@ Primary entry point: `train_from_config(<model_config_path>)`
 """
 
 import os
+import json
 from pathlib import Path
 
 import torch
@@ -16,6 +17,26 @@ from src.data import build_dataloaders
 from src.models import build_model, freeze_backbone, unfreeze_backbone
 from src.evaluate import evaluate_model
 from src.utils import load_config, get_device
+
+
+def sync_class_config(config: dict) -> dict:
+    """Populate class-dependent config fields from the active class map."""
+    class_map_path = Path(config["data"]["class_map"])
+    if not class_map_path.is_absolute():
+        repo_root = Path.cwd() if (Path.cwd() / "data").exists() else Path.cwd().parent
+        class_map_path = repo_root / class_map_path
+    with open(class_map_path) as file:
+        class_map = json.load(file)
+
+    num_classes = int(class_map["num_classes"])
+    ignore_index = int(class_map.get("ignore_index", config["data"].get("ignore_index", 255)))
+
+    config["data"]["num_classes"] = num_classes
+    config["data"]["ignore_index"] = ignore_index
+    config["model"]["num_classes"] = num_classes
+    config["model"].setdefault("in_channels", len(config["data"].get("channels", [1, 2, 3, 4, 5])))
+    config["training"]["loss"].setdefault("ignore_index", ignore_index)
+    return config
 
 
 def build_loss(loss_config: dict, device: torch.device) -> nn.Module:
@@ -300,6 +321,7 @@ def train_from_config(config_path: str | Path) -> dict:
     Main training loop that trains a FLAIR segmentation model from a merged config.
     """
     config = load_config(config_path)
+    config = sync_class_config(config)
     _set_seed(config["experiment"]["seed"])
 
     device = get_device()
@@ -308,7 +330,6 @@ def train_from_config(config_path: str | Path) -> dict:
 
     train_loader, val_loader, _ = build_dataloaders(config["data"])
     model = build_model(config["model"]).to(device)
-    config["training"]["loss"].setdefault("ignore_index", config["data"].get("ignore_index", 255))
     loss_fn = build_loss(config["training"]["loss"], device)
 
     warmup_frozen_epochs = config["training"].get("warmup_frozen_epochs", 0)

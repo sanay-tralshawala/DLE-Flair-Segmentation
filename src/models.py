@@ -80,20 +80,31 @@ class DinoV3SegmentationModel(nn.Module):
         return x
 
 def build_model(model_config: dict):
-    """Return a segmentation model with 5 input channels, backbone/encoder, and 5-class head."""
+    """Return a segmentation model using the configured input channels and class count."""
+    in_channels = model_config.get("in_channels", 5)
+    num_classes = model_config["num_classes"]
+
     if model_config["name"] == "resnet34_unet":
         model = smp.Unet(
-            encoder_name="resnet34",
-            encoder_weights="imagenet",
-            in_channels=5,
-            classes=5
+            encoder_name=model_config.get("encoder", "resnet34"),
+            encoder_weights="imagenet" if model_config.get("pretrained", True) else None,
+            in_channels=in_channels,
+            classes=num_classes,
         )
     elif model_config["name"] == "resnet34":
-        model = SegmentationModel(backbone_name="resnet34", in_channels=5, num_classes=5)
+        model = SegmentationModel(
+            backbone_name=model_config.get("encoder", "resnet34"),
+            in_channels=in_channels,
+            num_classes=num_classes,
+        )
     elif model_config["name"] == "convnext_tiny":
-        model = SegmentationModel(backbone_name="convnext_tiny", in_channels=5, num_classes=5)
+        model = SegmentationModel(
+            backbone_name=model_config.get("encoder", "convnext_tiny"),
+            in_channels=in_channels,
+            num_classes=num_classes,
+        )
     elif model_config["name"] == "dinov3_convnext_tiny":
-        model = DinoV3SegmentationModel(num_classes=5)
+        model = DinoV3SegmentationModel(num_classes=num_classes)
     else:
         raise ValueError(f"Unsupported model name: {model_config['name']}")
 
