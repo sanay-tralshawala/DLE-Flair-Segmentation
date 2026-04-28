@@ -8,9 +8,9 @@ experiment:
   output_dir: outputs
 
 data:
-  train_csv: data/processed/splits/grouped_5class_train.csv
-  val_csv: data/processed/splits/grouped_5class_val.csv
-  test_csv: data/processed/splits/grouped_5class_test.csv
+  train_csv: data/processed/splits/train.csv
+  val_csv: data/processed/splits/val.csv
+  test_csv: data/processed/splits/test.csv
   class_map: data/processed/class_map.json
   train_stats: data/processed/train_stats.json
 
@@ -24,7 +24,6 @@ data:
   norm_means: []
   norm_stds: []
   ignore_index: 255 # set mask to ignore bad masks (if they exist, standard behavior)
-  num_classes: 5
 
   augment:
     enabled: true
@@ -37,7 +36,6 @@ model:
   encoder: null # options: resnet34, convnext_tiny, dinov3_convnext_tiny
   pretrained: true
   in_channels: 5
-  num_classes: 5
 
 training:
   max_epochs: 100

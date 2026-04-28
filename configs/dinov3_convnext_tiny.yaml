@@ -10,7 +10,6 @@ model:
   name: dinov3_convnext_tiny
   encoder: dinov3_convnext_tiny
   pretrained: true
-  num_classes: 5
 
 training:
   max_epochs: 120
