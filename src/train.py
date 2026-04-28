@@ -310,6 +310,14 @@ def _log_wandb_checkpoints(run, checkpoint_paths: list[Path], artifact_name: str
     run.log_artifact(artifact)
 
 
+def _configure_wandb_metrics(run) -> None:
+    if run is None:
+        return
+    run.define_metric("val_IoU", summary="max")
+    run.define_metric("best_val_IoU", summary="max")
+    run.define_metric("best_val_IoU_epoch", summary="max")
+
+
 def finish_wandb_run(run) -> None:
     """Finish a W&B run when notebook-side logging is complete."""
     if run is not None:
@@ -354,6 +362,9 @@ def train_from_config(config_path: str | Path) -> dict:
     epochs_without_improvement = 0
     history = []
     run = _init_wandb(config)
+    _configure_wandb_metrics(run)
+    best_val_iou = None
+    best_val_iou_epoch = None
 
     for epoch in range(1, config["training"]["max_epochs"] + 1):
         if epoch == warmup_frozen_epochs + 1 and warmup_frozen_epochs > 0:
@@ -388,6 +399,17 @@ def train_from_config(config_path: str | Path) -> dict:
             **val_metrics,
             **_current_lrs(optimizer),
         }
+
+        current_val_iou = metrics.get("val_IoU")
+        if current_val_iou is not None and (
+            best_val_iou is None or current_val_iou > best_val_iou
+        ):
+            best_val_iou = current_val_iou
+            best_val_iou_epoch = epoch
+        if best_val_iou is not None:
+            metrics["best_val_IoU"] = best_val_iou
+            metrics["best_val_IoU_epoch"] = best_val_iou_epoch
+
         history.append(metrics)
 
         current_metric = metrics[monitor]
