@@ -1,0 +1,61 @@
+# configs/resnet34_unet.yaml
+
+defaults:
+  - default.yaml
+
+experiment:
+  name: resnet34_unet_3ch
+
+data:
+  image_size: 512
+  batch_size: 8
+  channels: [1, 2, 3]
+
+model:
+  name: resnet34_unet
+  encoder: resnet34
+  pretrained: true
+  in_channels: 3
+
+training:
+  max_epochs: 100
+  min_epochs: 10
+  warmup_frozen_epochs: 3
+
+  early_stopping:
+    enabled: true
+    monitor: val_loss
+    mode: min # options: min, max
+    patience: 20
+    min_delta: 0.0001
+
+  optimizer:
+    name: adam # options: adam, adamw
+    backbone_lr: 0.00003
+    head_lr: 0.0005
+    weight_decay: 0.0001
+
+  scheduler:
+    enabled: true
+    name: reduce_on_plateau      # options: cosine, reduce_on_plateau
+
+    mode: min         # reduce_on_plateau only; options: min, max
+    factor: 0.9       # reduce_on_plateau only; multiply LR by this factor on plateau
+    patience: 10      # reduce_on_plateau only; epochs without improvement before reducing LR
+    threshold: 0.0003 # reduce_on_plateau only; minimum meaningful monitor change
+    min_lr: 0.0       # reduce_on_plateau only; lower bound for each learning rate
+
+  loss:
+    name: cross_entropy # options: cross_entropy, weight_cross_entropy
+    class_weights: []
+
+wandb:
+  enabled: true
+  log_model: true
+  include_images: true
+  tags:
+    - flair
+    - segmentation
+    - baseline
+    - resnet34
+    - unet

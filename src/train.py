@@ -34,7 +34,15 @@ def sync_class_config(config: dict) -> dict:
     config["data"]["num_classes"] = num_classes
     config["data"]["ignore_index"] = ignore_index
     config["model"]["num_classes"] = num_classes
-    config["model"].setdefault("in_channels", len(config["data"].get("channels", [1, 2, 3, 4, 5])))
+    data_channels = config["data"].get("channels", [1, 2, 3, 4, 5])
+    model_in_channels = config["model"].get("in_channels", len(data_channels))
+    if model_in_channels != len(data_channels):
+        raise ValueError(
+            "Config mismatch: model.in_channels must match len(data.channels). "
+            f"Got model.in_channels={model_in_channels} and "
+            f"data.channels={data_channels}."
+        )
+    config["model"]["in_channels"] = model_in_channels
     config["training"]["loss"].setdefault("ignore_index", ignore_index)
     return config
 
