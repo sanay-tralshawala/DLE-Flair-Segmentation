@@ -1,7 +1,7 @@
 """Validation and evaluation metrics for segmentation models."""
 import torch
 import torch.nn.functional as F
-from tqdm.auto import tqdm
+from tqdm import tqdm
 from torchmetrics.classification import MulticlassJaccardIndex 
 
 
