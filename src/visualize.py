@@ -331,3 +331,39 @@ def plot_prediction_comparison_grid(
 
     fig.tight_layout()
     return fig
+
+
+def plot_class_iou(class_iou_result: dict, title: str = "Best checkpoint class IoU"):
+    """Plot per-class IoU values returned by `evaluate_class_iou`."""
+    rows = class_iou_result["class_iou_rows"]
+    if not rows:
+        raise ValueError("No class IoU rows available to plot.")
+
+    labels = [f"{row['class_id']}: {row['class_name']}" for row in rows]
+    values = [float(row["iou"]) for row in rows]
+
+    fig_height = max(3, 0.55 * len(rows) + 1.5)
+    fig, axis = plt.subplots(figsize=(8, fig_height))
+    y_positions = np.arange(len(rows))
+    bars = axis.barh(y_positions, values, color="#4C78A8")
+
+    axis.set_yticks(y_positions)
+    axis.set_yticklabels(labels)
+    axis.invert_yaxis()
+    axis.set_xlim(0, 1)
+    axis.set_xlabel("IoU")
+    axis.set_title(title)
+    axis.grid(axis="x", alpha=0.25)
+
+    for value, bar in zip(values, bars):
+        label_x = min(value + 0.02, 0.98)
+        axis.text(
+            label_x,
+            bar.get_y() + bar.get_height() / 2,
+            f"{value:.3f}",
+            va="center",
+            ha="left" if value <= 0.95 else "right",
+        )
+
+    fig.tight_layout()
+    return fig
