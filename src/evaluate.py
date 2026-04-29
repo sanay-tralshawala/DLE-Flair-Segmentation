@@ -185,6 +185,8 @@ def evaluate_test_metrics(
     device,
     ignore_index: int | None = 255,
     class_names=None,
+    input_transform=None,
+    desc: str = "Evaluating test metrics",
 ) -> dict:
     """Evaluate segmentation metrics on a dataloader, including mAP over pixels."""
     model.eval()
@@ -192,8 +194,10 @@ def evaluate_test_metrics(
     average_precision = MulticlassAveragePrecision(num_classes=num_classes, average=None).to(device)
     valid_pixel_count = 0
 
-    for batch in tqdm(dataloader, desc="Evaluating test metrics"):
+    for batch in tqdm(dataloader, desc=desc):
         images, masks = _unpack_batch(batch)
+        if input_transform is not None:
+            images = input_transform(images)
         images = images.to(device)
         masks = masks.to(device).long()
 

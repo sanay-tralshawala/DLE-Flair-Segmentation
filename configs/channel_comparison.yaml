@@ -1,0 +1,57 @@
+# Extra-channel prediction context.
+# Focuses on the 5-channel checkpoints and visualizes channels 4 and 5
+# alongside segmentation predictions.
+
+data:
+  class_map: "data/processed/class_map.json"
+  split: test
+
+models:
+  - name: "resnet34_unet_5ch"
+    config: "configs/resnet34_unet_5ch.yaml"
+    checkpoint: "notebooks/outputs/resnet34_unet_5ch_val_IoU/best.pt"
+    in_channels: 5
+    num_classes: 6
+    label: "ResNet34-UNet (5ch)"
+
+  - name: "convnext_tiny_5ch"
+    config: "configs/convnext_tiny_5ch.yaml"
+    checkpoint: "notebooks/outputs/convnext_tiny_5ch_val_IoU/best.pt"
+    in_channels: 5
+    num_classes: 6
+    label: "ConvNext-Tiny (5ch)"
+
+  - name: "dinov3_convnext_5ch"
+    config: "configs/dinov3_convnext_tiny_5ch.yaml"
+    checkpoint: "notebooks/outputs/dinov3_convnext_tiny_5ch_val_IoU/best.pt"
+    in_channels: 5
+    num_classes: 6
+    label: "DINOv3-ConvNext-Tiny (5ch)"
+
+visualization:
+  num_samples: 6
+  sample_indices: [0, 1, 2, 3, 4, 5]
+  rgb_channels: [0, 1, 2]
+  extra_channels:
+    - index: 3
+      label: "Channel 4 / IR"
+      cmap: "magma"
+    - index: 4
+      label: "Channel 5 / Height"
+      cmap: "terrain"
+  output_dir: "notebooks/outputs/channel_comparison/"
+  dpi: 150
+
+ablations:
+  - name: "full_5ch"
+    label: "Full 5ch"
+    zero_channels: []
+  - name: "no_ir"
+    label: "Channel 4 zeroed"
+    zero_channels: [3]
+  - name: "no_height"
+    label: "Channel 5 zeroed"
+    zero_channels: [4]
+  - name: "rgb_only"
+    label: "Channels 4+5 zeroed"
+    zero_channels: [3, 4]

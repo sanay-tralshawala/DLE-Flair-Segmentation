@@ -618,3 +618,154 @@ def plot_confusion_matrix(
 
     fig.tight_layout()
     return fig
+
+
+def plot_extra_channel_map(
+    image,
+    channel_index: int,
+    title: str | None = None,
+    cmap: str = "viridis",
+    percent_clip: tuple[int, int] = (2, 98),
+):
+    """Plot one non-RGB input channel from an image tensor shaped [C, H, W]."""
+    image = _to_numpy(image).astype(np.float32, copy=False)
+    if image.ndim != 3:
+        raise ValueError(f"Expected image shaped [C, H, W], got shape {image.shape}.")
+    if channel_index >= image.shape[0]:
+        raise ValueError(f"Channel index {channel_index} is out of range for shape {image.shape}.")
+
+    channel = image[channel_index]
+    low, high = np.percentile(channel, percent_clip)
+    if high > low:
+        channel = np.clip((channel - low) / (high - low), 0, 1)
+
+    fig, axis = plt.subplots(figsize=(5, 5))
+    im = axis.imshow(channel, cmap=cmap)
+    axis.set_title(title or f"Channel {channel_index}")
+    axis.axis("off")
+    fig.colorbar(im, ax=axis, fraction=0.046, pad=0.04)
+    fig.tight_layout()
+    return fig
+
+
+def prediction_error_map(mask, prediction, ignore_index: int = 255) -> np.ndarray:
+    """Return an error map where 0=correct, 1=incorrect, and 2=ignored."""
+    mask = _single_mask(mask)
+    prediction = _single_mask(prediction)
+    if mask.shape != prediction.shape:
+        raise ValueError(f"Mask shape {mask.shape} does not match prediction shape {prediction.shape}.")
+
+    error = (mask != prediction).astype(np.int64)
+    error[mask == ignore_index] = 2
+    return error
+
+
+def plot_extra_channel_context_grid(
+    images,
+    masks,
+    predictions,
+    extra_channels: list[dict],
+    max_items: int = 6,
+    rgb_channels: tuple[int, int, int] = (0, 1, 2),
+    class_names=None,
+    palette=None,
+    ignore_index: int = 255,
+    title: str | None = None,
+    percent_clip: tuple[int, int] = (2, 98),
+):
+    """Plot RGB, extra channels, ground truth, prediction, and error maps."""
+    images = _image_batch(images)
+    masks = _mask_batch(masks)
+    predictions = _mask_batch(predictions)
+    count = min(max_items, len(images), len(masks), len(predictions))
+    if count < 1:
+        raise ValueError("No image/mask/prediction triples available to plot.")
+
+    columns = ["RGB input"] + [channel["label"] for channel in extra_channels] + [
+        "Ground truth",
+        "Prediction",
+        "Error map",
+    ]
+    fig, axes = plt.subplots(
+        count,
+        len(columns),
+        figsize=(3.2 * len(columns), 3.0 * count),
+        squeeze=False,
+    )
+    error_cmap = ListedColormap(["#f2f2f2", "#d73027", "#777777"])
+    error_norm = BoundaryNorm([-0.5, 0.5, 1.5, 2.5], error_cmap.N)
+
+    for row in range(count):
+        col = 0
+        axes[row, col].imshow(_single_image(images[row], channels=rgb_channels))
+        axes[row, col].axis("off")
+        if row == 0:
+            axes[row, col].set_title(columns[col])
+        col += 1
+
+        for channel_config in extra_channels:
+            channel = images[row][int(channel_config["index"])].astype(np.float32, copy=False)
+            low, high = np.percentile(channel, percent_clip)
+            if high > low:
+                channel = np.clip((channel - low) / (high - low), 0, 1)
+            axes[row, col].imshow(channel, cmap=channel_config.get("cmap", "viridis"))
+            axes[row, col].axis("off")
+            if row == 0:
+                axes[row, col].set_title(columns[col])
+            col += 1
+
+        axes[row, col].imshow(colorize_label_mask(masks[row], palette=palette, ignore_index=ignore_index))
+        axes[row, col].axis("off")
+        if row == 0:
+            axes[row, col].set_title(columns[col])
+        col += 1
+
+        axes[row, col].imshow(colorize_label_mask(predictions[row], palette=palette, ignore_index=ignore_index))
+        axes[row, col].axis("off")
+        if row == 0:
+            axes[row, col].set_title(columns[col])
+        col += 1
+
+        axes[row, col].imshow(
+            prediction_error_map(masks[row], predictions[row], ignore_index=ignore_index),
+            cmap=error_cmap,
+            norm=error_norm,
+        )
+        axes[row, col].axis("off")
+        if row == 0:
+            axes[row, col].set_title(columns[col])
+
+    if title:
+        fig.suptitle(title, fontsize=12, fontweight="bold")
+    fig.tight_layout()
+    return fig
+
+
+def plot_channel_surface(
+    image,
+    channel_index: int,
+    title: str | None = None,
+    cmap: str = "terrain",
+    stride: int = 8,
+    percent_clip: tuple[int, int] = (2, 98),
+):
+    """Plot a downsampled 3D surface for one input channel."""
+    channel = _to_numpy(image).astype(np.float32, copy=False)
+    if channel.ndim != 3:
+        raise ValueError(f"Expected image shaped [C, H, W], got shape {channel.shape}.")
+    channel = channel[channel_index]
+    low, high = np.percentile(channel, percent_clip)
+    if high > low:
+        channel = np.clip((channel - low) / (high - low), 0, 1)
+    channel = channel[::stride, ::stride]
+
+    y, x = np.mgrid[:channel.shape[0], :channel.shape[1]]
+    fig = plt.figure(figsize=(7, 6))
+    axis = fig.add_subplot(111, projection="3d")
+    axis.plot_surface(x, y, channel, cmap=cmap, linewidth=0, antialiased=True)
+    axis.set_title(title or f"Channel {channel_index} Surface")
+    axis.set_xticks([])
+    axis.set_yticks([])
+    axis.set_zticks([])
+    fig.tight_layout()
+    return fig
