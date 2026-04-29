@@ -1,0 +1,82 @@
+
+conformal:
+
+  alpha: 0.1
+
+  # Score function: "lac" = Least Ambiguous Classifier (1 - p_true).
+
+  score_function: "lac"
+
+  # If true, compute per-class conditional coverage in addition to marginal.
+  per_class_coverage: true
+
+# ============================================================
+# Models to evaluate
+# Each entry is loaded independently so you can compare them.
+# ============================================================
+
+models:
+  - name: "resnet34_unet_5ch"
+    config: "configs/resnet34_unet_5ch.yaml"
+    checkpoint: "outputs/resnet34_unet_5ch_val_IoU/best.pt"
+    in_channels: 5
+    num_classes: 6
+    label: "ResNet34-UNet (5ch)"
+
+  - name: "resnet34_unet_3ch"
+    config: "configs/resnet34_unet_3ch.yaml"
+    checkpoint: "outputs/resnet34_unet_3ch_val_IoU/best.pt"
+    in_channels: 3
+    num_classes: 6
+    label: "ResNet34-UNet (3ch)"
+    
+  - name: "convnext_tiny_3ch"
+    config: "configs/convnext_tiny_3ch.yaml"
+    checkpoint: "outputs/convnext_tiny_3ch_val_IoU/best.pt"
+    in_channels: 3
+    num_classes: 6
+    label: "ConvNext-Tiny (3ch)"
+
+  - name: "convnext_tiny_5ch"
+    config: "configs/convnext_tiny_5ch.yaml"
+    checkpoint: "outputs/convnext_tiny_5ch_val_IoU/best.pt"
+    in_channels: 5
+    num_classes: 6
+    label: "ConvNext-Tiny (5ch)"
+
+  - name: "dinov3_convnext_5ch"
+    config: "configs/dinov3_convnext_tiny_5ch.yaml"
+    checkpoint: "outputs/dinov3_convnext_tiny_5ch_val_IoU/best.pt"
+    in_channels: 5
+    num_classes: 6
+    label: "DINOv3-ConvNext-Tiny (5ch)"
+
+  - name: "dinov3_convnext_3ch"
+    config: "configs/dinov3_convnext_tiny_3ch.yaml"
+    checkpoint: "outputs/dinov3_convnext_tiny_3ch_val_IoU/best.pt"
+    in_channels: 3
+    num_classes: 6
+    label: "DINOv3-ConvNext-Tiny (3ch)"
+
+
+visualization:
+  # Number of test images to show in the qualitative grid
+  num_samples: 6
+
+  # RGB channel indices from the input tensor (0-based) for display
+  rgb_channels: [0, 1, 2]
+
+  # Output directory for saved figures (relative to repo root)
+  output_dir: "outputs/conformal_viz/"
+
+  # DPI for saved figures
+  dpi: 150
+
+
+class_names:
+  - "Background"
+  - "Building"
+  - "Pervious surface"
+  - "Impervious surface"
+  - "Bare soil"
+  - "Water"

@@ -231,6 +231,10 @@ outputs/*
 notebooks/outputs/*
 notebooks/wandb/*
 
+wandb/*
+
 # Flair source code reference
 0_reference/
 
+dinov3_convnext_tiny_pretrain_lvd1689m-21b726bb.pth
+wandb/

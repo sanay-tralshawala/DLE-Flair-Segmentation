@@ -54,7 +54,8 @@ class DinoV3SegmentationModel(nn.Module):
 
         self.backbone = AutoModel.from_pretrained(model_name, token=os.environ.get("HF_HUB_TOKEN"))
 
-        stem_conv = self.backbone.model.stages[0].downsample_layers[0]
+        # Stage 0: downsample_layers[0] is the stem Conv2d (3 -> 96, 4x4 stride 4)
+        stem_conv = self.backbone.stages[0].downsample_layers[0]  # no .model
         if in_channels != stem_conv.in_channels:
             new_stem_conv = nn.Conv2d(
                 in_channels,
@@ -69,14 +70,14 @@ class DinoV3SegmentationModel(nn.Module):
                 new_stem_conv.weight[:, :copied_channels].copy_(stem_conv.weight[:, :copied_channels])
                 if in_channels > stem_conv.in_channels:
                     repeated = stem_conv.weight.mean(dim=1, keepdim=True)
-                    for channel_index in range(stem_conv.in_channels, in_channels):
-                        new_stem_conv.weight[:, channel_index:channel_index + 1].copy_(repeated)
+                    for ch in range(stem_conv.in_channels, in_channels):
+                        new_stem_conv.weight[:, ch:ch + 1].copy_(repeated)
                 if stem_conv.bias is not None:
                     new_stem_conv.bias.copy_(stem_conv.bias)
-            self.backbone.model.stages[0].downsample_layers[0] = new_stem_conv
+            self.backbone.stages[0].downsample_layers[0] = new_stem_conv  # no .model
 
-        # hidden size depends on model (tiny ≈ 768)
-        hidden_dim = self.backbone.config.hidden_sizes[-1]
+        # Deepest stage outputs 768 channels
+        hidden_dim = self.backbone.config.hidden_sizes[-1]  # 768
 
         self.decoder = nn.Sequential(
             nn.Conv2d(hidden_dim, 256, kernel_size=3, padding=1),
@@ -87,13 +88,12 @@ class DinoV3SegmentationModel(nn.Module):
     def forward(self, x):
         input_size = x.shape[-2:]
 
-        # Use the spatial encoder output directly; self.backbone(x) adds pooled tokens.
-        outputs = self.backbone.model(x)
-        x = outputs.last_hidden_state
+        features = x
+        for stage in self.backbone.stages:
+            features = stage(features)
 
-        x = self.decoder(x)
+        x = self.decoder(features)
         x = F.interpolate(x, size=input_size, mode="bilinear", align_corners=False)
-
         return x
 
 def build_model(model_config: dict):
