@@ -1,4 +1,6 @@
 """Validation and evaluation metrics for segmentation models."""
+import time
+
 import torch
 import torch.nn.functional as F
 from tqdm import tqdm
@@ -188,6 +190,7 @@ def evaluate_test_metrics(
     input_transform=None,
     desc: str = "Evaluating test metrics",
     include_average_precision: bool = False,
+    latency_warmup_batches: int = 1,
 ) -> dict:
     """Evaluate semantic segmentation metrics on a dataloader."""
     model.eval()
@@ -198,15 +201,28 @@ def evaluate_test_metrics(
 
         average_precision = MulticlassAveragePrecision(num_classes=num_classes, average=None).to(device)
     valid_pixel_count = 0
+    latency_warmup_batches = max(0, int(latency_warmup_batches))
+    latency_total_seconds = 0.0
+    latency_num_patches = 0
 
-    for batch in tqdm(dataloader, desc=desc):
+    for batch_index, batch in enumerate(tqdm(dataloader, desc=desc)):
         images, masks = _unpack_batch(batch)
         if input_transform is not None:
             images = input_transform(images)
         images = images.to(device)
         masks = masks.to(device).long()
 
+        should_time_batch = batch_index >= latency_warmup_batches
+        if should_time_batch and images.is_cuda:
+            torch.cuda.synchronize(images.device)
+        start_time = time.perf_counter() if should_time_batch else None
         logits = model(images)
+        if should_time_batch:
+            if images.is_cuda:
+                torch.cuda.synchronize(images.device)
+            latency_total_seconds += time.perf_counter() - start_time
+            latency_num_patches += int(images.shape[0])
+
         probabilities = F.softmax(logits, dim=1)
         predictions = probabilities.argmax(dim=1)
 
@@ -238,6 +254,13 @@ def evaluate_test_metrics(
         "class_dice": summary["class_dice"],
         "class_rows": summary["class_rows"],
         "num_pixels": int(valid_pixel_count),
+        "latency_ms_per_patch": (
+            latency_total_seconds * 1000.0 / latency_num_patches
+            if latency_num_patches
+            else float("nan")
+        ),
+        "latency_total_ms": latency_total_seconds * 1000.0,
+        "latency_num_patches": latency_num_patches,
     }
     if average_precision is not None:
         if valid_pixel_count:

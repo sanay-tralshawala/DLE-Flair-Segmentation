@@ -6,6 +6,7 @@ metrics:
   split: test
   ignore_index: 255
   average: macro
+  latency_warmup_batches: 1
 
 models:
   - name: "resnet34_unet_5ch"
