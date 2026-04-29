@@ -19,14 +19,14 @@ models:
     checkpoint: "notebooks/outputs/convnext_tiny_5ch_val_IoU/best.pt"
     in_channels: 5
     num_classes: 6
-    label: "ConvNext-Tiny (5ch)"
+    label: "ConvNeXt-Tiny (5ch)"
 
   - name: "dinov3_convnext_5ch"
     config: "configs/dinov3_convnext_tiny_5ch.yaml"
     checkpoint: "notebooks/outputs/dinov3_convnext_tiny_5ch_val_IoU/best.pt"
     in_channels: 5
     num_classes: 6
-    label: "DINOv3-ConvNext-Tiny (5ch)"
+    label: "DINOv3-ConvNeXt-Tiny (5ch)"
 
 visualization:
   num_samples: 6
