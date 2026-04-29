@@ -27,28 +27,28 @@ models:
     checkpoint: "notebooks/outputs/convnext_tiny_3ch_val_IoU/best.pt"
     in_channels: 3
     num_classes: 6
-    label: "ConvNext-Tiny (3ch)"
+    label: "ConvNeXt-Tiny (3ch)"
 
   - name: "convnext_tiny_5ch"
     config: "configs/convnext_tiny_5ch.yaml"
     checkpoint: "notebooks/outputs/convnext_tiny_5ch_val_IoU/best.pt"
     in_channels: 5
     num_classes: 6
-    label: "ConvNext-Tiny (5ch)"
+    label: "ConvNeXt-Tiny (5ch)"
 
   - name: "dinov3_convnext_5ch"
     config: "configs/dinov3_convnext_tiny_5ch.yaml"
     checkpoint: "notebooks/outputs/dinov3_convnext_tiny_5ch_val_IoU/best.pt"
     in_channels: 5
     num_classes: 6
-    label: "DINOv3-ConvNext-Tiny (5ch)"
+    label: "DINOv3-ConvNeXt-Tiny (5ch)"
 
   - name: "dinov3_convnext_3ch"
     config: "configs/dinov3_convnext_tiny_3ch.yaml"
     checkpoint: "notebooks/outputs/dinov3_convnext_tiny_3ch_val_IoU/best.pt"
     in_channels: 3
     num_classes: 6
-    label: "DINOv3-ConvNext-Tiny (3ch)"
+    label: "DINOv3-ConvNeXt-Tiny (3ch)"
 
 visualization:
   normalize_confusion_matrix: true

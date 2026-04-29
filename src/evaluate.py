@@ -2,7 +2,7 @@
 import torch
 import torch.nn.functional as F
 from tqdm import tqdm
-from torchmetrics.classification import MulticlassAveragePrecision, MulticlassJaccardIndex
+from torchmetrics.classification import MulticlassJaccardIndex
 import numpy as np
 
 
@@ -187,11 +187,16 @@ def evaluate_test_metrics(
     class_names=None,
     input_transform=None,
     desc: str = "Evaluating test metrics",
+    include_average_precision: bool = False,
 ) -> dict:
-    """Evaluate segmentation metrics on a dataloader, including mAP over pixels."""
+    """Evaluate semantic segmentation metrics on a dataloader."""
     model.eval()
     confusion_matrix = torch.zeros((num_classes, num_classes), dtype=torch.long, device=device)
-    average_precision = MulticlassAveragePrecision(num_classes=num_classes, average=None).to(device)
+    average_precision = None
+    if include_average_precision:
+        from torchmetrics.classification import MulticlassAveragePrecision
+
+        average_precision = MulticlassAveragePrecision(num_classes=num_classes, average=None).to(device)
     valid_pixel_count = 0
 
     for batch in tqdm(dataloader, desc=desc):
@@ -212,41 +217,36 @@ def evaluate_test_metrics(
             ignore_index=ignore_index,
         )
 
-        flat_probs = probabilities.permute(0, 2, 3, 1).reshape(-1, num_classes)
         flat_masks = masks.reshape(-1)
         valid = (flat_masks >= 0) & (flat_masks < num_classes)
         if ignore_index is not None:
             valid = valid & (flat_masks != ignore_index)
         if valid.any():
-            average_precision.update(flat_probs[valid], flat_masks[valid])
             valid_pixel_count += int(valid.sum().item())
+            if average_precision is not None:
+                flat_probs = probabilities.permute(0, 2, 3, 1).reshape(-1, num_classes)
+                average_precision.update(flat_probs[valid], flat_masks[valid])
 
     confusion_np = confusion_matrix.detach().cpu().numpy()
     summary = summarize_confusion_matrix(confusion_np, class_names=class_names)
-    if valid_pixel_count:
-        class_ap = average_precision.compute().detach().cpu().numpy()
-    else:
-        class_ap = np.full(num_classes, np.nan, dtype=np.float64)
-
-    class_rows = []
-    for row in summary["class_rows"]:
-        class_id = row["class_id"]
-        row = dict(row)
-        row["average_precision"] = float(class_ap[class_id])
-        class_rows.append(row)
-
-    return {
+    metrics = {
         "confusion_matrix": confusion_np,
         "pixel_accuracy": summary["pixel_accuracy"],
         "mIoU": summary["mIoU"],
         "mean_dice": summary["mean_dice"],
-        "mAP": _safe_nanmean(class_ap),
         "class_iou": summary["class_iou"],
         "class_dice": summary["class_dice"],
-        "class_ap": class_ap,
-        "class_rows": class_rows,
+        "class_rows": summary["class_rows"],
         "num_pixels": int(valid_pixel_count),
     }
+    if average_precision is not None:
+        if valid_pixel_count:
+            class_ap = average_precision.compute().detach().cpu().numpy()
+        else:
+            class_ap = np.full(num_classes, np.nan, dtype=np.float64)
+        metrics["mAP"] = _safe_nanmean(class_ap)
+        metrics["class_ap"] = class_ap
+    return metrics
     
 def evaluate_conformal(model, loader, q_hat, num_classes, device):
     """
