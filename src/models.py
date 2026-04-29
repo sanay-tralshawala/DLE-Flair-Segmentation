@@ -53,9 +53,10 @@ class DinoV3SegmentationModel(nn.Module):
         super().__init__()
 
         self.backbone = AutoModel.from_pretrained(model_name, token=os.environ.get("HF_HUB_TOKEN"))
+        self.encoder = getattr(self.backbone, "model", self.backbone)
 
         # Stage 0: downsample_layers[0] is the stem Conv2d (3 -> 96, 4x4 stride 4)
-        stem_conv = self.backbone.stages[0].downsample_layers[0]  # no .model
+        stem_conv = self.encoder.stages[0].downsample_layers[0]
         if in_channels != stem_conv.in_channels:
             new_stem_conv = nn.Conv2d(
                 in_channels,
@@ -74,7 +75,7 @@ class DinoV3SegmentationModel(nn.Module):
                         new_stem_conv.weight[:, ch:ch + 1].copy_(repeated)
                 if stem_conv.bias is not None:
                     new_stem_conv.bias.copy_(stem_conv.bias)
-            self.backbone.stages[0].downsample_layers[0] = new_stem_conv  # no .model
+            self.encoder.stages[0].downsample_layers[0] = new_stem_conv
 
         # Deepest stage outputs 768 channels
         hidden_dim = self.backbone.config.hidden_sizes[-1]  # 768
@@ -89,7 +90,7 @@ class DinoV3SegmentationModel(nn.Module):
         input_size = x.shape[-2:]
 
         features = x
-        for stage in self.backbone.stages:
+        for stage in self.encoder.stages:
             features = stage(features)
 
         x = self.decoder(features)
