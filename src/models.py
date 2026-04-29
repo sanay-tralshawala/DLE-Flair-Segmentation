@@ -10,7 +10,13 @@ from transformers import AutoModel
 
 class SegmentationModel(nn.Module):
 
-    def __init__(self, backbone_name: str, in_channels: int = 5, num_classes: int = 5):
+    def __init__(
+        self,
+        backbone_name: str,
+        in_channels: int = 5,
+        num_classes: int = 5,
+        pretrained: bool = True,
+    ):
         super().__init__()
 
         if backbone_name not in timm.list_models():
@@ -19,7 +25,7 @@ class SegmentationModel(nn.Module):
         # Backbone (feature extractor)
         self.backbone = timm.create_model(
             backbone_name,
-            pretrained=True,
+            pretrained=pretrained,
             in_chans=in_channels,
             features_only=True
         )
@@ -53,10 +59,10 @@ class DinoV3SegmentationModel(nn.Module):
         super().__init__()
 
         self.backbone = AutoModel.from_pretrained(model_name, token=os.environ.get("HF_HUB_TOKEN"))
-        self.encoder = getattr(self.backbone, "model", self.backbone)
+        encoder = self._spatial_encoder()
 
         # Stage 0: downsample_layers[0] is the stem Conv2d (3 -> 96, 4x4 stride 4)
-        stem_conv = self.encoder.stages[0].downsample_layers[0]
+        stem_conv = encoder.stages[0].downsample_layers[0]
         if in_channels != stem_conv.in_channels:
             new_stem_conv = nn.Conv2d(
                 in_channels,
@@ -75,7 +81,7 @@ class DinoV3SegmentationModel(nn.Module):
                         new_stem_conv.weight[:, ch:ch + 1].copy_(repeated)
                 if stem_conv.bias is not None:
                     new_stem_conv.bias.copy_(stem_conv.bias)
-            self.encoder.stages[0].downsample_layers[0] = new_stem_conv
+            encoder.stages[0].downsample_layers[0] = new_stem_conv
 
         # Deepest stage outputs 768 channels
         hidden_dim = self.backbone.config.hidden_sizes[-1]  # 768
@@ -86,11 +92,14 @@ class DinoV3SegmentationModel(nn.Module):
             nn.Conv2d(256, num_classes, kernel_size=1)
         )
 
+    def _spatial_encoder(self):
+        return getattr(self.backbone, "model", self.backbone)
+
     def forward(self, x):
         input_size = x.shape[-2:]
 
         features = x
-        for stage in self.encoder.stages:
+        for stage in self._spatial_encoder().stages:
             features = stage(features)
 
         x = self.decoder(features)
@@ -114,12 +123,14 @@ def build_model(model_config: dict):
             backbone_name=model_config.get("encoder", "resnet34"),
             in_channels=in_channels,
             num_classes=num_classes,
+            pretrained=model_config.get("pretrained", True),
         )
     elif model_config["name"] == "convnext_tiny":
         model = SegmentationModel(
             backbone_name=model_config.get("encoder", "convnext_tiny"),
             in_channels=in_channels,
             num_classes=num_classes,
+            pretrained=model_config.get("pretrained", True),
         )
     elif model_config["name"] == "dinov3_convnext_tiny":
         model = DinoV3SegmentationModel(in_channels=in_channels, num_classes=num_classes)

@@ -567,3 +567,54 @@ def plot_multi_model_comparison(results, alpha, viz_out_dir, dpi):
     fig.savefig(viz_out_dir / "multi_model_comparison.png",
                 dpi=dpi, bbox_inches="tight")
     return fig
+
+
+def plot_confusion_matrix(
+    confusion_matrix,
+    class_names=None,
+    normalize: bool = True,
+    title: str | None = None,
+    cmap: str = "Blues",
+):
+    """Plot a segmentation confusion matrix with true classes on rows."""
+    matrix = np.asarray(confusion_matrix, dtype=np.float64)
+    display_matrix = matrix.copy()
+    if normalize:
+        row_totals = display_matrix.sum(axis=1, keepdims=True)
+        display_matrix = np.divide(
+            display_matrix,
+            row_totals,
+            out=np.zeros_like(display_matrix, dtype=np.float64),
+            where=row_totals != 0,
+        )
+
+    labels = [_class_name(class_names, index) for index in range(matrix.shape[0])]
+    fig, axis = plt.subplots(figsize=(8, 7))
+    image = axis.imshow(display_matrix, interpolation="nearest", cmap=cmap)
+    fig.colorbar(image, ax=axis, fraction=0.046, pad=0.04)
+
+    axis.set_title(title or "Confusion Matrix")
+    axis.set_xlabel("Predicted class")
+    axis.set_ylabel("True class")
+    axis.set_xticks(np.arange(len(labels)))
+    axis.set_yticks(np.arange(len(labels)))
+    axis.set_xticklabels(labels, rotation=45, ha="right")
+    axis.set_yticklabels(labels)
+
+    threshold = display_matrix.max() / 2 if display_matrix.size else 0
+    for row in range(display_matrix.shape[0]):
+        for column in range(display_matrix.shape[1]):
+            value = display_matrix[row, column]
+            label = f"{value:.2f}" if normalize else f"{int(matrix[row, column])}"
+            axis.text(
+                column,
+                row,
+                label,
+                ha="center",
+                va="center",
+                color="white" if value > threshold else "black",
+                fontsize=8,
+            )
+
+    fig.tight_layout()
+    return fig

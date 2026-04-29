@@ -2,7 +2,7 @@
 import torch
 import torch.nn.functional as F
 from tqdm import tqdm
-from torchmetrics.classification import MulticlassJaccardIndex 
+from torchmetrics.classification import MulticlassAveragePrecision, MulticlassJaccardIndex
 import numpy as np
 
 
@@ -84,6 +84,165 @@ def evaluate_class_iou(model, dataloader, num_classes, device, ignore_index=None
         for class_id in range(num_classes)
     ]
     return {"class_iou": class_iou, "class_iou_rows": class_iou_rows}
+
+
+def load_checkpoint_model(checkpoint_path, device, model_config: dict | None = None):
+    """Build a model from config, load checkpoint weights, and switch to eval mode."""
+    from src.models import build_model
+
+    checkpoint = torch.load(checkpoint_path, map_location=device)
+    config = checkpoint.get("config", {})
+    model_config = model_config or config.get("model")
+    if model_config is None:
+        raise ValueError("A model config is required when the checkpoint has no embedded config.")
+
+    model_config = dict(model_config)
+    if model_config.get("name") != "dinov3_convnext_tiny":
+        model_config["pretrained"] = False
+
+    model = build_model(model_config)
+    model.load_state_dict(checkpoint["model_state_dict"])
+    model.to(device)
+    model.eval()
+    return model, checkpoint
+
+
+def confusion_matrix_from_tensors(
+    predictions: torch.Tensor,
+    targets: torch.Tensor,
+    num_classes: int,
+    ignore_index: int | None = None,
+) -> torch.Tensor:
+    """Return a [true_class, predicted_class] confusion matrix for one batch."""
+    predictions = predictions.reshape(-1).long()
+    targets = targets.reshape(-1).long()
+    valid = (targets >= 0) & (targets < num_classes)
+    if ignore_index is not None:
+        valid = valid & (targets != ignore_index)
+
+    predictions = predictions[valid]
+    targets = targets[valid]
+    if targets.numel() == 0:
+        return torch.zeros((num_classes, num_classes), dtype=torch.long, device=targets.device)
+
+    bins = targets * num_classes + predictions
+    matrix = torch.bincount(bins, minlength=num_classes * num_classes)
+    return matrix.reshape(num_classes, num_classes)
+
+
+def _safe_divide(numerator: np.ndarray, denominator: np.ndarray) -> np.ndarray:
+    return np.divide(
+        numerator,
+        denominator,
+        out=np.full_like(numerator, np.nan, dtype=np.float64),
+        where=denominator != 0,
+    )
+
+
+def _safe_nanmean(values: np.ndarray) -> float:
+    return float(np.nanmean(values)) if not np.all(np.isnan(values)) else float("nan")
+
+
+def summarize_confusion_matrix(confusion_matrix, class_names=None) -> dict:
+    """Compute accuracy, IoU, and Dice metrics from a confusion matrix."""
+    matrix = np.asarray(confusion_matrix, dtype=np.float64)
+    true_pixels = matrix.sum(axis=1)
+    predicted_pixels = matrix.sum(axis=0)
+    true_positive = np.diag(matrix)
+    total = matrix.sum()
+
+    class_iou = _safe_divide(true_positive, true_pixels + predicted_pixels - true_positive)
+    class_dice = _safe_divide(2 * true_positive, true_pixels + predicted_pixels)
+    pixel_accuracy = float(true_positive.sum() / total) if total else float("nan")
+
+    class_rows = [
+        {
+            "class_id": class_id,
+            "class_name": _class_name(class_names, class_id),
+            "iou": float(class_iou[class_id]),
+            "dice": float(class_dice[class_id]),
+            "support_pixels": int(true_pixels[class_id]),
+            "predicted_pixels": int(predicted_pixels[class_id]),
+        }
+        for class_id in range(matrix.shape[0])
+    ]
+
+    return {
+        "pixel_accuracy": pixel_accuracy,
+        "mIoU": _safe_nanmean(class_iou),
+        "mean_dice": _safe_nanmean(class_dice),
+        "class_iou": class_iou,
+        "class_dice": class_dice,
+        "class_rows": class_rows,
+    }
+
+
+@torch.no_grad()
+def evaluate_test_metrics(
+    model,
+    dataloader,
+    num_classes: int,
+    device,
+    ignore_index: int | None = 255,
+    class_names=None,
+) -> dict:
+    """Evaluate segmentation metrics on a dataloader, including mAP over pixels."""
+    model.eval()
+    confusion_matrix = torch.zeros((num_classes, num_classes), dtype=torch.long, device=device)
+    average_precision = MulticlassAveragePrecision(num_classes=num_classes, average=None).to(device)
+    valid_pixel_count = 0
+
+    for batch in tqdm(dataloader, desc="Evaluating test metrics"):
+        images, masks = _unpack_batch(batch)
+        images = images.to(device)
+        masks = masks.to(device).long()
+
+        logits = model(images)
+        probabilities = F.softmax(logits, dim=1)
+        predictions = probabilities.argmax(dim=1)
+
+        confusion_matrix += confusion_matrix_from_tensors(
+            predictions=predictions,
+            targets=masks,
+            num_classes=num_classes,
+            ignore_index=ignore_index,
+        )
+
+        flat_probs = probabilities.permute(0, 2, 3, 1).reshape(-1, num_classes)
+        flat_masks = masks.reshape(-1)
+        valid = (flat_masks >= 0) & (flat_masks < num_classes)
+        if ignore_index is not None:
+            valid = valid & (flat_masks != ignore_index)
+        if valid.any():
+            average_precision.update(flat_probs[valid], flat_masks[valid])
+            valid_pixel_count += int(valid.sum().item())
+
+    confusion_np = confusion_matrix.detach().cpu().numpy()
+    summary = summarize_confusion_matrix(confusion_np, class_names=class_names)
+    if valid_pixel_count:
+        class_ap = average_precision.compute().detach().cpu().numpy()
+    else:
+        class_ap = np.full(num_classes, np.nan, dtype=np.float64)
+
+    class_rows = []
+    for row in summary["class_rows"]:
+        class_id = row["class_id"]
+        row = dict(row)
+        row["average_precision"] = float(class_ap[class_id])
+        class_rows.append(row)
+
+    return {
+        "confusion_matrix": confusion_np,
+        "pixel_accuracy": summary["pixel_accuracy"],
+        "mIoU": summary["mIoU"],
+        "mean_dice": summary["mean_dice"],
+        "mAP": _safe_nanmean(class_ap),
+        "class_iou": summary["class_iou"],
+        "class_dice": summary["class_dice"],
+        "class_ap": class_ap,
+        "class_rows": class_rows,
+        "num_pixels": int(valid_pixel_count),
+    }
     
 def evaluate_conformal(model, loader, q_hat, num_classes, device):
     """

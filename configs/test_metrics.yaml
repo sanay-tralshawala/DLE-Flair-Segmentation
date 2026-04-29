@@ -1,0 +1,64 @@
+# Test-set metrics configuration.
+# Mirrors configs/conformal_prediction.yaml for simplicity 
+# NOTE: reads checkpoint artifacts from `notebooks/outputs`
+
+metrics:
+  split: test
+  ignore_index: 255
+  average: macro
+
+models:
+  - name: "resnet34_unet_5ch"
+    config: "configs/resnet34_unet_5ch.yaml"
+    checkpoint: "notebooks/outputs/resnet34_unet_5ch_val_IoU/best.pt"
+    in_channels: 5
+    num_classes: 6
+    label: "ResNet34-UNet (5ch)"
+
+  - name: "resnet34_unet_3ch"
+    config: "configs/resnet34_unet_3ch.yaml"
+    checkpoint: "notebooks/outputs/resnet34_unet_3ch_valIoU/best.pt"
+    in_channels: 3
+    num_classes: 6
+    label: "ResNet34-UNet (3ch)"
+
+  - name: "convnext_tiny_3ch"
+    config: "configs/convnext_tiny_3ch.yaml"
+    checkpoint: "notebooks/outputs/convnext_tiny_3ch_val_IoU/best.pt"
+    in_channels: 3
+    num_classes: 6
+    label: "ConvNext-Tiny (3ch)"
+
+  - name: "convnext_tiny_5ch"
+    config: "configs/convnext_tiny_5ch.yaml"
+    checkpoint: "notebooks/outputs/convnext_tiny_5ch_val_IoU/best.pt"
+    in_channels: 5
+    num_classes: 6
+    label: "ConvNext-Tiny (5ch)"
+
+  - name: "dinov3_convnext_5ch"
+    config: "configs/dinov3_convnext_tiny_5ch.yaml"
+    checkpoint: "notebooks/outputs/dinov3_convnext_tiny_5ch_val_IoU/best.pt"
+    in_channels: 5
+    num_classes: 6
+    label: "DINOv3-ConvNext-Tiny (5ch)"
+
+  - name: "dinov3_convnext_3ch"
+    config: "configs/dinov3_convnext_tiny_3ch.yaml"
+    checkpoint: "notebooks/outputs/dinov3_convnext_tiny_3ch_val_IoU/best.pt"
+    in_channels: 3
+    num_classes: 6
+    label: "DINOv3-ConvNext-Tiny (3ch)"
+
+visualization:
+  normalize_confusion_matrix: true
+  output_dir: "notebooks/outputs/test_metrics/"
+  dpi: 150
+
+class_names:
+  - "Built (Non-vegetated)"
+  - "Bare (Non-vegetated)"
+  - "Woody Vegetation"
+  - "Agriculture"
+  - "Herbaceous Vegetation"
+  - "Water"
