@@ -3,6 +3,7 @@ ipywidgets
 matplotlib
 nbformat
 numpy
+pandas
 pillow
 python-dotenv
 pyyaml

@@ -11,6 +11,7 @@ dependencies = [
     "nbconvert>=7.17.1",
     "nbformat>=5.10.4",
     "numpy>=2.4.1",
+    "pandas>=3.0.2",
     "pillow>=12.2.0",
     "python-dotenv>=1.2.1",
     "pyyaml>=6.0.3",
