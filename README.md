@@ -98,7 +98,7 @@ Clone the repository to this specified directory by the command:
 
 ## How to Reproduce Results
 
-If you would like to simply reproduce the existing results, refer to `08_reproduce_results.ipynb`
+If you would like to simply reproduce the existing results, refer to `notebooks/08_reproduce_results.ipynb`
 
 
 
