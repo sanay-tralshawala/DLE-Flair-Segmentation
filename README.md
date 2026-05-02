@@ -57,63 +57,51 @@ The goal is to identify which architectures provide the best balance of accuracy
 ```
 
 ## Environment Setup (Google Colab)
+This codebase is optimized for a Google Colab enviornment, however cloning this repository locally and running through this procedure in a local enviornment (excluding mmounting google drive) would work as well.
 
 **Prerequisites:**
-- Google account with access to Google Colab (free tier works)
-- GPU runtime enabled (T4 or better recommended for training)
+- Google account with access to Google Colab 
+- T4 GPU generally is acceptable but you may run into runtime errors during the training of the DINOv3 models where an A100 GPU is sufficient (requires Colab pro access)
 
 ### Setup Instructions
 
 1. **Upload repository to Colab:**
    - Mount your Google Drive in Colab
-   - Clone the repo or upload as a ZIP file
+   -   In the desired holding location, open a terminal or a Colab Jupyter Notebook and run the following commands:
+```python
+from google.colab import drive
+drive.mount('/content/drive')
+```
+Next, change the directory to the location where you would like to clone the repository. The code is currently built for the repo cloning to occur within a folder named "Deep Learning Project" with MyDrive, while this is not required, the file path must be changed accordingly in future notebooks.
+```python
+%cd /content/drive/MyDrive/{path to desired directory}
+```
+
+Clone the repository to this specified directory by the command:
+```python
+!git clone https://github.com/sanay-tralshawala/DLE-Flair-Segmentation/
+```
    
-2. **In the first Colab cell, install dependencies:**
-   ```python
-   !pip install -r requirements.txt
-   ```
+2. **Gain access to required models on Hugging Face**
+   - Log in or create an account to HuggingFace
+   - Go to a DINOv3 model (https://huggingface.co/facebook/dinov3-convnext-tiny-pretrain-lvd1689m) and request access to their family of models which are gated
+   - You will not be able to train or reproduce results for the DINOv3 model analysis unless you have gained access to this model
 
 3. **Add Colab secrets for API keys:**
    - Click the 🔑 **Secrets** icon in the left sidebar
-   - Add `WANDB_API_KEY` — For experiment tracking (get from [wandb.ai](https://wandb.ai))
    - Add `HF_TOKEN` — For Hugging Face gated models like DINOv3 (get from [huggingface.co](https://huggingface.co/settings/tokens))
    - The notebooks will automatically load these via `userdata.get_secret()`
+   - Ensure the notebook has been granted access to the token
 
 4. **Enable GPU (required for training):**
-   - Go to **Runtime** → **Change runtime type** → Select **GPU** (T4 or L4 recommended)
-
-## Data Setup
-
-**Repository Size:** ~50 MB (code + configs only)
-
-### Option A: Toy Dataset (Fastest, ~1.4 GB)
-
-Perfect for prototyping and testing:
-
-```python
-# In Colab notebook cell:
-!python -m jupyter nbconvert --to notebook --execute notebooks/00_download_toy_dataset.ipynb
-```
-
-This downloads and extracts the FLAIR toy dataset into `data/raw/` (~1.4 GB). Then run `01_eda.ipynb` to generate the class map and train/val/test splits.
-
-**Storage requirements after setup:**
-- `data/raw/` (toy dataset): ~1.4 GB
-- `data/processed/` (processed dataset): ~0.8 GB
-- **Total data: ~2.2 GB**
-
-### Option B: Full FLAIR Dataset (~100+ GB)
-
-For production results with significantly more data. Downloads ~25-30 GB of compressed data, expands to 100+ GB when extracted.
-
-Follow instructions in [data/README.md](data/README.md).
-
-**Storage requirements:**
-- `data/raw/` (full dataset): ~100+ GB
-- `data/processed/` (processed dataset): ~50+ GB
-- **Total data: ~150+ GB**
+   - Go to **Runtime** → **Change runtime type** → Select **GPU** (T4 or A100 recommended)
 
 ## How to Reproduce Results
+
+If you would like to simply reproduce the existing results, refer to `08_reproduce_results.ipynb`
+
+
+
 
 ### Quick Start (3 Steps in Colab)
 
