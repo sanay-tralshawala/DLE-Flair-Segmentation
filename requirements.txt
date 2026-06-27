@@ -16,3 +16,4 @@ wandb
 rasterio
 segmentation_models_pytorch
 transformers
+import_ipynb
